@@ -6,4 +6,4 @@ This plugin adds a simple, but useful feature. With a single keypress, you can h
 
 | How to Use | Screenshot |
 |-------------|------------|
-| - One-Key Activation<br> - Press Your Bound Key to Activate| ![UI Preview 1](https://github.com/user-attachments/assets/ba7119d0-3852-468a-bceb-bb4c8e79014a)) |
+| - One-Key Activation<br> - Press Your Bound Key to Activate| ![image](https://github.com/user-attachments/assets/abd86f1d-72ca-4b64-b767-63035e8ecb25) |
