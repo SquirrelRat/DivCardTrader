@@ -14,6 +14,15 @@ namespace DivCardTrader
     public class DivCardTrader : BaseSettingsPlugin<DivCardTraderSettings>
     {
         private Coroutine _mainTurnInCoroutine;
+        private TurnInState _currentState = TurnInState.Idle;
+
+        private enum TurnInState
+        {
+            Idle,
+            TurningIn,
+            TakingReward
+        }
+
 
         public override Job Tick()
         {
@@ -21,29 +30,34 @@ namespace DivCardTrader
 
             if (!GameController.IngameState.IngameUi.CardTradeWindow.IsVisible)
             {
-                if (_mainTurnInCoroutine != null && !_mainTurnInCoroutine.IsDone)
+                if (_currentState != TurnInState.Idle)
                 {
                     LogMessage("Trade window closed, stopping the turn-in process.", 3);
-                    _mainTurnInCoroutine.Done(true);
+                    _currentState = TurnInState.Idle;
+                    if (_mainTurnInCoroutine != null && !_mainTurnInCoroutine.IsDone)
+                    {
+                        _mainTurnInCoroutine.Done(true);
+                    }
                 }
                 return null;
             }
 
-            if (Input.IsKeyDown(Settings.TurnInCardsKey.Value))
+            if (Input.IsKeyDown(Settings.TurnInCardsKey.Value) && _currentState == TurnInState.Idle)
             {
-                if (_mainTurnInCoroutine == null || _mainTurnInCoroutine.IsDone)
-                {
-                    _mainTurnInCoroutine = new Coroutine(ProcessAllCards(), this, "DivCardTrader.ProcessAllCards");
-                    Core.ParallelRunner.Run(_mainTurnInCoroutine);
-                }
+                _mainTurnInCoroutine = new Coroutine(ProcessAllCards(), this, "DivCardTrader.ProcessAllCards");
+                Core.ParallelRunner.Run(_mainTurnInCoroutine);
             }
 
             if (Input.IsKeyDown(Settings.StopProcessKey.Value))
             {
-                if (_mainTurnInCoroutine != null && !_mainTurnInCoroutine.IsDone)
+                if (_currentState != TurnInState.Idle)
                 {
                     LogMessage("Manual stop requested. Halting the turn-in process.", 5);
-                    _mainTurnInCoroutine.Done(true);
+                    _currentState = TurnInState.Idle;
+                    if (_mainTurnInCoroutine != null && !_mainTurnInCoroutine.IsDone)
+                    {
+                        _mainTurnInCoroutine.Done(true);
+                    }
                 }
             }
 
@@ -54,9 +68,10 @@ namespace DivCardTrader
         {
             try
             {
+                _currentState = TurnInState.TurningIn;
                 LogMessage("Starting full divination card turn-in process.", 5);
 
-                while (true)
+                while (_currentState == TurnInState.TurningIn)
                 {
                     if (IsInventoryFull())
                     {
@@ -67,9 +82,20 @@ namespace DivCardTrader
                     var inventory = GameController.IngameState.IngameUi.InventoryPanel[InventoryIndex.PlayerInventory];
                     var cardStack = inventory.VisibleInventoryItems
                         .FirstOrDefault(item =>
-                            item.Item != null &&
-                            item.Item.Path.StartsWith("Metadata/Items/DivinationCards/") &&
-                            item.Item.TryGetComponent<Stack>(out var stack) && stack.Size == stack.Info.MaxStackSize);
+                        {
+                            if (item.Item == null || !item.Item.Path.StartsWith("Metadata/Items/DivinationCards/"))
+                                return false;
+
+                            if (!item.Item.TryGetComponent<Stack>(out var stack) || stack.Size != stack.Info.MaxStackSize)
+                                return false;
+
+                            if (string.IsNullOrWhiteSpace(Settings.CardNames.Value))
+                                return true;
+
+                            var cardName = item.Item.GetComponent<Base>()?.Name;
+                            var allowedCards = new HashSet<string>(Settings.CardNames.Value.Split(',').Select(s => s.Trim()), System.StringComparer.OrdinalIgnoreCase);
+                            return allowedCards.Contains(cardName);
+                        });
 
                     if (cardStack == null)
                     {
@@ -111,6 +137,7 @@ namespace DivCardTrader
                     Input.Click(MouseButtons.Left);
                     yield return new WaitTime(Settings.DelayBetweenActions.Value + 150);
 
+                    _currentState = TurnInState.TakingReward;
                     var rewardItem = tradeWindow.CardSlotItem;
                     if (rewardItem != null)
                     {
@@ -128,6 +155,7 @@ namespace DivCardTrader
 
                     LogMessage($"Pausing for {Settings.PauseBetweenCycles.Value}ms.", 5);
                     yield return new WaitTime(Settings.PauseBetweenCycles.Value);
+                    _currentState = TurnInState.TurningIn;
                 }
 
                 LogMessage("All divination card stacks have been processed.", 5);
@@ -135,6 +163,7 @@ namespace DivCardTrader
             finally
             {
                 Input.KeyUp(Keys.LControlKey);
+                _currentState = TurnInState.Idle;
             }
         }
 
@@ -155,5 +184,6 @@ namespace DivCardTrader
             var inventory = GameController.IngameState.IngameUi.InventoryPanel[InventoryIndex.PlayerInventory];
             return inventory.VisibleInventoryItems.Count >= 60;
         }
+
     }
 }
