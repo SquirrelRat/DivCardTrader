@@ -132,7 +132,9 @@ namespace DivCardTrader
                         break;
                     }
 
-                    Input.SetCursorPos(tradeButton.GetClientRect().Center);
+                    var tradeButtonRect = tradeButton.GetClientRect();
+                    var newCenter = new Vector2(tradeButtonRect.Center.X + Settings.TradeButtonOffsetX.Value, tradeButtonRect.Center.Y + Settings.TradeButtonOffsetY.Value);
+                    Input.SetCursorPos(newCenter);
                     yield return new WaitTime(Settings.DelayBetweenActions.Value);
                     Input.Click(MouseButtons.Left);
                     yield return new WaitTime(Settings.DelayBetweenActions.Value + 150);

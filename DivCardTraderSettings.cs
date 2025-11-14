@@ -19,5 +19,11 @@ namespace DivCardTrader
         public RangeNode<int> PauseBetweenCycles { get; set; } = new RangeNode<int>(500, 100, 2000);
         [Menu("Card Names", "Comma-separated list of divination card names to trade. Leave empty to trade all recognized cards.")]
         public TextNode CardNames { get; set; } = new TextNode("");
+
+        [Menu("Trade Button Offset X", "Fine-tune the X-axis position for the trade button click.")]
+        public RangeNode<int> TradeButtonOffsetX { get; set; } = new RangeNode<int>(0, -100, 100);
+
+        [Menu("Trade Button Offset Y", "Fine-tune the Y-axis position for the trade button click.")]
+        public RangeNode<int> TradeButtonOffsetY { get; set; } = new RangeNode<int>(0, -100, 100);
     }
 }
